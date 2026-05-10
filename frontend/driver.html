@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RideFlow | Driver Dashboard</title>
+<meta name="description" content="Manage your rides, toggle availability, view earnings, and register your vehicle on RideFlow."/>
+<link rel="stylesheet" href="css/style.css"/>
+<style>
+  .online-banner{padding:14px 20px;border-radius:var(--rmd);display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;transition:all var(--tr)}
+  .online-banner.online{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35)}
+  .online-banner.offline{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25)}
+  .ride-request-card{background:var(--bgcard);border:1px solid var(--bdr);border-radius:var(--rlg);padding:20px;margin-bottom:14px;transition:all var(--tr)}
+  .ride-request-card:hover{border-color:var(--bdrh);box-shadow:var(--sglow)}
+  .earnings-ring{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:140px;height:140px;margin:0 auto 16px}
+  .ring-svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .ring-value{font-size:1.6rem;font-weight:800;line-height:1;z-index:1}
+  .ring-label{font-size:.7rem;color:var(--tmuted);z-index:1}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand"><div class="logo-icon">🚗</div>RideFlow</div>
+  <div class="nav-actions">
+    <div class="nav-user"><span>🚗</span><span id="nav-name">Driver</span></div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <button class="sidebar-item active" onclick="showSection('dashboard')">📊 Dashboard</button>
+    <button class="sidebar-item" onclick="showSection('pending')">📥 Pending Rides</button>
+    <button class="sidebar-item" onclick="showSection('current')">🚀 Current Ride</button>
+    <button class="sidebar-item" onclick="showSection('earnings')">💰 Earnings</button>
+    <button class="sidebar-item" onclick="showSection('history')">📋 Ride History</button>
+    <div class="sidebar-section">Account</div>
+    <button class="sidebar-item" onclick="showSection('vehicle')">🚘 My Vehicle</button>
+    <button class="sidebar-item" onclick="showSection('profile')">👤 Profile</button>
+  </aside>
+
+  <main class="main-content">
+
+    <!-- ── Dashboard ────────────────────────── -->
+    <section id="section-dashboard" class="fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Driver Dashboard</div><div class="page-subtitle">Manage your rides and availability</div></div>
+      </div>
+
+      <!-- Online Toggle Banner -->
+      <div class="online-banner offline" id="status-banner">
+        <div class="flex items-center gap-3">
+          <div class="dot dot-gray" id="status-dot"></div>
+          <div>
+            <div class="font-semi" id="status-text">You are Offline</div>
+            <div class="text-xs text-muted">Toggle to start accepting rides</div>
+          </div>
+        </div>
+        <div class="toggle-wrap">
+          <span class="toggle-lbl" id="toggle-label">Go Online</span>
+          <label class="toggle">
+            <input type="checkbox" id="online-toggle" onchange="toggleOnline(this)"/>
+            <span class="tgl-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="grid-4" id="dash-stats">
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="ds-today">$0</div><div class="stat-label">Today's Earnings</div></div>
+        <div class="stat-card"><div class="stat-icon">🚗</div><div class="stat-value" id="ds-today-rides">0</div><div class="stat-label">Today's Rides</div></div>
+        <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-value" id="ds-rating">5.0</div><div class="stat-label">Avg Rating</div></div>
+        <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-value" id="ds-week">$0</div><div class="stat-label">This Week</div></div>
+      </div>
+
+      <!-- Pending Ride Requests Preview -->
+      <div class="mt-6">
+        <div class="flex justify-between items-center mb-4">
+          <div class="font-bold" style="font-size:1.05rem">Incoming Ride Requests</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadPendingRides()">↻ Refresh</button>
+        </div>
+        <div id="dash-pending">
+          <div class="loading-screen"><div class="loader"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Pending Rides ─────────────────────── -->
+    <section id="section-pending" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Pending Rides</div><div class="page-subtitle">Available ride requests near you</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadPendingRides()">↻ Refresh</button>
+      </div>
+      <div id="pending-list">
+        <div class="loading-screen"><div class="loader"></div></div>
+      </div>
+    </section>
+
+    <!-- ── Current Ride ──────────────────────── -->
+    <section id="section-current" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Current Ride</div><div class="page-subtitle">Manage your active ride</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadCurrentRide()">↻ Refresh</button>
+      </div>
+      <div id="current-content">
+        <div class="loading-screen"><div class="loader"></div></div>
+      </div>
+    </section>
+
+    <!-- ── Earnings ──────────────────────────── -->
+    <section id="section-earnings" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Earnings</div><div class="page-subtitle">Your income breakdown</div></div>
+      </div>
+      <div id="earnings-content">
+        <div class="loading-screen"><div class="loader"></div></div>
+      </div>
+    </section>
+
+    <!-- ── Ride History ───────────────────────── -->
+    <section id="section-history" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Ride History</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadDriverHistory()">↻ Refresh</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Date</th><th>Route</th><th>Status</th><th>Fare</th><th>Rating</th></tr></thead>
+          <tbody id="driver-history-tbody"><tr><td colspan="5" class="text-center text-muted" style="padding:24px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Vehicle ────────────────────────────── -->
+    <section id="section-vehicle" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">My Vehicle</div><div class="page-subtitle">Register or view your vehicle details</div></div>
+      </div>
+      <div style="max-width:500px">
+        <div class="card" id="vehicle-card">
+          <div class="loading-screen"><div class="loader"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Profile ────────────────────────────── -->
+    <section id="section-profile" class="hidden fade-in">
+      <div class="page-header"><div class="page-title">My Profile</div></div>
+      <div style="max-width:460px">
+        <div class="card" id="driver-profile-card">
+          <div class="loading-screen"><div class="loader"></div></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Vehicle Registration Modal -->
+<div class="modal-overlay" id="vehicle-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🚘 Register Vehicle</span>
+      <button class="modal-close" onclick="closeModal('vehicle-modal')">×</button>
+    </div>
+    <div id="vehicle-form-alert"></div>
+    <form id="vehicle-form" onsubmit="submitVehicle(event)">
+      <div class="form-group"><label class="form-label">Make (Brand)</label><input type="text" id="v-make" class="form-input" placeholder="Toyota" required/></div>
+      <div class="form-group"><label class="form-label">Model</label><input type="text" id="v-model" class="form-input" placeholder="Corolla" required/></div>
+      <div class="form-group"><label class="form-label">Plate Number</label><input type="text" id="v-plate" class="form-input" placeholder="ABC-1234" required/></div>
+      <div class="form-group"><label class="form-label">Color</label><input type="text" id="v-color" class="form-input" placeholder="White"/></div>
+      <div class="form-group">
+        <label class="form-label">Vehicle Type</label>
+        <select id="v-type" class="form-input">
+          <option value="economy">Economy</option>
+          <option value="premium">Premium</option>
+          <option value="xl">XL</option>
+        </select>
+      </div>
+      <button type="submit" id="vehicle-submit-btn" class="btn btn-primary btn-block" style="margin-top:8px">Register Vehicle</button>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script>
+  if(!Auth.requireRole('driver')) void 0;
+  const user = Auth.getUser();
+  if(user) document.getElementById('nav-name').textContent = user.name;
+
+  let isOnline = false;
+  let driverProfile = null;
+
+  // Init: load profile and earnings
+  async function init() {
+    try {
+      const data = await api.get('/auth/profile');
+      driverProfile = data.user;
+      if(driverProfile.driver) {
+        isOnline = !!driverProfile.driver.is_online;
+        updateOnlineBanner(isOnline);
+        document.getElementById('online-toggle').checked = isOnline;
+      }
+      loadEarningsStats();
+      loadPendingRides();
+    } catch(err) { toast(err.message,'error'); }
+  }
+
+  function updateOnlineBanner(online) {
+    const banner = document.getElementById('status-banner');
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    const lbl  = document.getElementById('toggle-label');
+    banner.className = `online-banner ${online?'online':'offline'}`;
+    dot.className = `dot ${online?'dot-green pulse-g':'dot-red'}`;
+    text.textContent = online ? '✅ You are Online — Accepting rides' : '⛔ You are Offline';
+    lbl.textContent  = online ? 'Go Offline' : 'Go Online';
+  }
+
+  async function toggleOnline(el) {
+    const val = el.checked;
+    try {
+      const data = await api.patch('/driver/availability',{ is_online: val });
+      isOnline = val;
+      updateOnlineBanner(val);
+      toast(data.message, 'success');
+      if(val) loadPendingRides();
+    } catch(err) {
+      el.checked = !val;
+      toast(err.message,'error');
+    }
+  }
+
+  // Earnings stats for dashboard
+  async function loadEarningsStats() {
+    try {
+      const data = await api.get('/driver/earnings');
+      const e = data.earnings;
+      document.getElementById('ds-today').textContent   = fmtMoney(e.today_earnings);
+      document.getElementById('ds-today-rides').textContent = e.today_rides;
+      document.getElementById('ds-rating').textContent  = parseFloat(e.avg_rating).toFixed(1);
+      document.getElementById('ds-week').textContent    = fmtMoney(e.week_earnings);
+    } catch(err) { /* silent */ }
+  }
+
+  // Pending rides
+  async function loadPendingRides() {
+    const dashEl   = document.getElementById('dash-pending');
+    const listEl   = document.getElementById('pending-list');
+    [dashEl, listEl].forEach(el => { if(el) el.innerHTML = '<div class="loading-screen"><div class="loader"></div></div>'; });
+    try {
+      const data = await api.get('/driver/pending-rides');
+      const rides = data.rides;
+      const html = rides.length ? rides.map(renderRideCard).join('') :
+        `<div class="empty-state"><div class="ei">🚗</div><p>No pending rides right now. Stay online!</p></div>`;
+      if(dashEl) dashEl.innerHTML = html;
+      if(listEl) listEl.innerHTML = html;
+    } catch(err) {
+      const e = `<div class="alert alert-error">${err.message}</div>`;
+      if(dashEl) dashEl.innerHTML = e;
+      if(listEl) listEl.innerHTML = e;
+    }
+  }
+
+  function renderRideCard(r) {
+    return `
+      <div class="ride-request-card">
+        <div class="flex justify-between items-center mb-3">
+          <div><div class="font-semi">Ride #${r.id}</div><div class="text-xs text-muted">${fmtDate(r.created_at)}</div></div>
+          <span class="badge badge-blue">Requested</span>
+        </div>
+        <div style="font-size:.85rem;margin-bottom:12px">
+          <div>📍 <strong>From:</strong> ${r.pickup_location}</div>
+          <div style="margin-top:4px">🏁 <strong>To:</strong> ${r.dropoff_location}</div>
+          <div style="margin-top:4px;color:var(--tmuted)">👤 Rider: ${r.rider_name} · 📞 ${r.rider_phone||'—'} · 📏 ${r.distance_km||'?'}km · 💵 ${fmtMoney(r.fare)}</div>
+        </div>
+        <div class="flex gap-3">
+          <button class="btn btn-primary btn-sm" onclick="acceptRide(${r.id})">✅ Accept</button>
+          <button class="btn btn-danger btn-sm" onclick="rejectRide(${r.id})">✗ Pass</button>
+        </div>
+      </div>`;
+  }
+
+  async function acceptRide(id) {
+    try {
+      await api.post(`/driver/rides/${id}/accept`,{});
+      toast('Ride accepted! Head to pickup.','success');
+      loadPendingRides();
+      showSection('current');
+    } catch(err) { toast(err.message,'error'); }
+  }
+
+  async function rejectRide(id) {
+    try {
+      await api.post(`/driver/rides/${id}/reject`,{});
+      toast('Ride passed.','info');
+      loadPendingRides();
+    } catch(err) { toast(err.message,'error'); }
+  }
+
+  // Current ride
+  async function loadCurrentRide() {
+    const el = document.getElementById('current-content');
+    el.innerHTML = '<div class="loading-screen"><div class="loader"></div></div>';
+    try {
+      const data = await api.get('/rides/active');
+      if(!data.ride) {
+        el.innerHTML = `<div class="empty-state"><div class="ei">🚗</div><p>No active ride. Accept a ride from <a href="#" onclick="showSection('pending')">Pending Rides</a>.</p></div>`;
+        return;
+      }
+      const r = data.ride;
+      const nextStatus = { accepted:'en_route', en_route:'in_progress', in_progress:'completed' };
+      const btnLabel   = { accepted:'🚗 Start Driving to Pickup', en_route:'📍 Arrived at Pickup', in_progress:'✅ Complete Ride' };
+      el.innerHTML = `
+        <div class="active-ride-card" style="background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(34,197,94,.04));border:1px solid rgba(34,197,94,.3);border-radius:var(--rlg);padding:22px">
+          <div class="flex justify-between items-center mb-4">
+            <div><div class="font-bold" style="font-size:1.1rem">Ride #${r.id}</div><div class="text-xs text-muted">${fmtDate(r.created_at)}</div></div>
+            ${statusPill(r.status)}
+          </div>
+          <div class="map-box" style="height:160px;margin-bottom:16px"><div class="map-icon">📍</div><span>Route map</span></div>
+          <div style="background:rgba(0,0,0,.2);border-radius:var(--rmd);padding:14px;margin-bottom:14px;font-size:.87rem">
+            <div><strong>📍 Pickup:</strong> ${r.pickup_location}</div>
+            <div style="margin-top:6px"><strong>🏁 Drop-off:</strong> ${r.dropoff_location}</div>
+            <div style="margin-top:6px;color:var(--tmuted)">👤 ${r.rider_name} · 📞 ${r.rider_phone||'—'} · 📏 ${r.distance_km}km · 💵 ${fmtMoney(r.fare)}</div>
+          </div>
+          <div class="flex gap-3 flex-wrap">
+            ${nextStatus[r.status] ? `<button class="btn btn-primary" onclick="advanceRide(${r.id},'${nextStatus[r.status]}')">${btnLabel[r.status]}</button>` : ''}
+            ${r.status==='accepted'||r.status==='en_route' ? `<button class="btn btn-danger btn-sm" onclick="advanceRide(${r.id},'cancelled')">Cancel</button>` : ''}
+          </div>
+        </div>`;
+    } catch(err) {
+      el.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  }
+
+  async function advanceRide(id, status) {
+    try {
+      await api.patch(`/driver/rides/${id}/status`,{ status });
+      toast(`Ride updated: ${status.replace('_',' ')}`,'success');
+      loadCurrentRide();
+      if(status==='completed') loadEarningsStats();
+    } catch(err) { toast(err.message,'error'); }
+  }
+
+  // Earnings section
+  async function loadEarnings() {
+    const el = document.getElementById('earnings-content');
+    el.innerHTML = '<div class="loading-screen"><div class="loader"></div></div>';
+    try {
+      const data = await api.get('/driver/earnings');
+      const e = data.earnings;
+      el.innerHTML = `
+        <div class="grid-3" style="margin-bottom:24px">
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value">${fmtMoney(e.total)}</div><div class="stat-label">Total Earnings</div></div>
+          <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-value">${fmtMoney(e.week_earnings)}</div><div class="stat-label">This Week (${e.week_rides} rides)</div></div>
+          <div class="stat-card"><div class="stat-icon">🌅</div><div class="stat-value">${fmtMoney(e.today_earnings)}</div><div class="stat-label">Today (${e.today_rides} rides)</div></div>
+        </div>
+        <div class="card" style="text-align:center;padding:32px">
+          <div style="font-size:3rem;font-weight:800;color:var(--g500)">${fmtMoney(e.total)}</div>
+          <div class="text-muted mt-2">Total Lifetime Earnings</div>
+          <div class="stars mt-4" style="font-size:1.4rem">${renderStars(e.avg_rating)}</div>
+          <div class="text-sm text-muted mt-1">Average Rating: ${parseFloat(e.avg_rating).toFixed(2)}/5.0</div>
+        </div>`;
+    } catch(err) {
+      el.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  }
+
+  // Driver ride history
+  async function loadDriverHistory() {
+    const tbody = document.getElementById('driver-history-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center"><div class="loader"></div></td></tr>';
+    try {
+      const data = await api.get('/rides/history');
+      if(!data.rides.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding:24px">No rides yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.rides.map(r=>`
+        <tr>
+          <td>${fmtDate(r.created_at)}</td>
+          <td style="font-size:.82rem">${r.pickup_location}<br/><span class="text-muted">→ ${r.dropoff_location}</span></td>
+          <td>${statusPill(r.status)}</td>
+          <td class="text-green font-bold">${fmtMoney(r.fare)}</td>
+          <td>${r.rating ? `<span class="stars">${renderStars(r.rating)}</span> <span class="text-xs">${r.rating}</span>` : '—'}</td>
+        </tr>`).join('');
+    } catch(err) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center" style="color:#f87171">${err.message}</td></tr>`;
+    }
+  }
+
+  // Vehicle section
+  async function loadVehicleSection() {
+    const el = document.getElementById('vehicle-card');
+    try {
+      const data = await api.get('/auth/profile');
+      const d = data.user.driver;
+      if(d && d.make) {
+        const verifiedBadge = d.vehicle_verified
+          ? '<span class="badge badge-green">✓ Verified</span>'
+          : '<span class="badge badge-yellow">Pending Verification</span>';
+        el.innerHTML = `
+          <div style="text-align:center;margin-bottom:18px">
+            <div style="font-size:3rem">🚘</div>
+            <div style="font-size:1.2rem;font-weight:700;margin-top:8px">${d.make} ${d.model}</div>
+            ${verifiedBadge}
+          </div>
+          <div class="divider"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:.85rem;margin-top:14px">
+            <div><span class="text-muted">Plate</span><br/><strong>${d.plate_number}</strong></div>
+            <div><span class="text-muted">Color</span><br/><strong>${d.color||'—'}</strong></div>
+            <div><span class="text-muted">Type</span><br/><strong style="text-transform:capitalize">${d.vehicle_type}</strong></div>
+            <div><span class="text-muted">Verified</span><br/><strong>${d.vehicle_verified?'Yes':'No'}</strong></div>
+          </div>`;
+      } else {
+        el.innerHTML = `
+          <div class="empty-state">
+            <div class="ei">🚘</div>
+            <p>No vehicle registered yet.</p>
+            <button class="btn btn-primary btn-sm mt-4" onclick="openModal('vehicle-modal')">Register Vehicle</button>
+          </div>`;
+      }
+    } catch(err) {
+      el.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  }
+
+  async function submitVehicle(e) {
+    e.preventDefault();
+    const btn = document.getElementById('vehicle-submit-btn');
+    setLoading(btn,true);
+    try {
+      await api.post('/driver/vehicle',{
+        make:         document.getElementById('v-make').value.trim(),
+        model:        document.getElementById('v-model').value.trim(),
+        plate_number: document.getElementById('v-plate').value.trim().toUpperCase(),
+        color:        document.getElementById('v-color').value.trim(),
+        vehicle_type: document.getElementById('v-type').value
+      });
+      closeModal('vehicle-modal');
+      toast('Vehicle registered! Awaiting admin verification.','success');
+      loadVehicleSection();
+    } catch(err) {
+      document.getElementById('vehicle-form-alert').innerHTML = `<div class="alert alert-error">✗ ${err.message}</div>`;
+      setLoading(btn,false);
+    }
+  }
+
+  // Profile
+  async function loadDriverProfile() {
+    const el = document.getElementById('driver-profile-card');
+    try {
+      const data = await api.get('/auth/profile');
+      const u = data.user; const d = u.driver;
+      el.innerHTML = `
+        <div style="text-align:center;margin-bottom:18px">
+          <div style="width:72px;height:72px;background:linear-gradient(135deg,var(--g500),var(--g700));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;margin:0 auto 10px">${u.name[0]}</div>
+          <div style="font-size:1.15rem;font-weight:700">${u.name}</div>
+          <div class="text-muted text-sm">${u.email}</div>
+          <div class="flex gap-2 justify-between" style="margin-top:8px;justify-content:center">
+            <span class="badge badge-blue">Driver</span>
+            ${d?.is_verified ? '<span class="badge badge-green">Verified</span>' : '<span class="badge badge-yellow">Unverified</span>'}
+            ${d?.flagged ? '<span class="badge badge-red">Flagged</span>' : ''}
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.85rem;margin-top:12px">
+          <div><span class="text-muted">Phone</span><br/><strong>${u.phone||'—'}</strong></div>
+          <div><span class="text-muted">License</span><br/><strong>${d?.license_number||'—'}</strong></div>
+          <div><span class="text-muted">Rating</span><br/><strong class="text-green">${parseFloat(d?.avg_rating||5).toFixed(2)} ⭐</strong></div>
+          <div><span class="text-muted">Total Earned</span><br/><strong>${fmtMoney(d?.total_earnings||0)}</strong></div>
+        </div>`;
+    } catch(err) { el.innerHTML = `<div class="alert alert-error">${err.message}</div>`; }
+  }
+
+  // Section switching
+  const sidebarMap = ['dashboard','pending','current','earnings','history','vehicle','profile'];
+  function showSection(name) {
+    document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden'));
+    document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
+    const sec = document.getElementById(`section-${name}`);
+    if(sec){ sec.classList.remove('hidden'); sec.classList.add('fade-in'); }
+    const idx = sidebarMap.indexOf(name);
+    if(idx>=0) document.querySelectorAll('.sidebar-item')[idx]?.classList.add('active');
+    if(name==='pending')  loadPendingRides();
+    if(name==='current')  loadCurrentRide();
+    if(name==='earnings') loadEarnings();
+    if(name==='history')  loadDriverHistory();
+    if(name==='vehicle')  loadVehicleSection();
+    if(name==='profile')  loadDriverProfile();
+  }
+
+  function logout(){ Auth.clear(); window.location.href='/'; }
+
+  init();
+</script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RideFlow | Sign In & Register</title>
+<meta name="description" content="Sign in or create your RideFlow account to book rides, drive, or manage the platform."/>
+<link rel="stylesheet" href="css/style.css"/>
+<style>
+  body{display:flex;min-height:100vh;background:var(--bg900)}
+  .auth-left{flex:1;display:flex;align-items:center;justify-content:center;padding:40px;background:linear-gradient(145deg,var(--bg800) 0%,var(--bg900) 60%);position:relative;overflow:hidden}
+  .auth-left::before{content:'';position:absolute;top:-120px;right:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,.18) 0%,transparent 70%)}
+  .auth-left::after{content:'';position:absolute;bottom:-80px;left:-80px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,.12) 0%,transparent 70%)}
+  .auth-hero{max-width:420px;z-index:1}
+  .auth-hero .brand{display:flex;align-items:center;gap:12px;margin-bottom:48px}
+  .auth-hero .brand .logo-icon{width:48px;height:48px;background:linear-gradient(135deg,var(--g500),var(--g700));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 8px 24px var(--glow)}
+  .auth-hero .brand-name{font-size:1.6rem;font-weight:800;color:var(--t100)}
+  .auth-hero h1{font-size:2.4rem;font-weight:800;line-height:1.15;margin-bottom:16px}
+  .auth-hero h1 span{color:var(--g500)}
+  .auth-hero p{color:var(--tmuted);font-size:1rem;line-height:1.7;margin-bottom:36px}
+  .features{display:flex;flex-direction:column;gap:16px}
+  .feat{display:flex;align-items:center;gap:14px;padding:14px 18px;background:rgba(34,197,94,.06);border:1px solid var(--bdr);border-radius:var(--rmd)}
+  .feat-icon{font-size:1.4rem;flex-shrink:0}
+  .feat-text strong{display:block;font-size:.92rem;font-weight:600;color:var(--t100)}
+  .feat-text span{font-size:.8rem;color:var(--tmuted)}
+  .auth-right{width:480px;display:flex;align-items:center;justify-content:center;padding:40px 36px;background:var(--bgcard);border-left:1px solid var(--bdr)}
+  .auth-box{width:100%;max-width:400px}
+  .tab-header{display:flex;background:var(--bg800);border-radius:var(--rmd);padding:5px;gap:4px;margin-bottom:28px}
+  .tab-btn{flex:1;padding:10px;border:none;background:transparent;color:var(--tmuted);font-family:'Inter',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;border-radius:10px;transition:all var(--tr)}
+  .tab-btn.active{background:linear-gradient(135deg,var(--g500),var(--g600));color:#fff;box-shadow:0 3px 12px var(--glow)}
+  .tab-pane{display:none}
+  .tab-pane.active{display:block;animation:fadeIn .3s ease}
+  .auth-title{font-size:1.3rem;font-weight:700;margin-bottom:6px}
+  .auth-subtitle{font-size:.85rem;color:var(--tmuted);margin-bottom:24px}
+  .role-select{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+  .role-card{padding:14px;border:1.5px solid var(--bdr);border-radius:var(--rmd);cursor:pointer;text-align:center;transition:all var(--tr)}
+  .role-card:hover{border-color:var(--g500);background:rgba(34,197,94,.06)}
+  .role-card.selected{border-color:var(--g500);background:rgba(34,197,94,.1)}
+  .role-card .role-icon{font-size:1.8rem;margin-bottom:6px}
+  .role-card .role-name{font-size:.82rem;font-weight:700;color:var(--t300)}
+  #register-role{display:none}
+  .forgot-link{font-size:.82rem;color:var(--g500);cursor:pointer;display:block;text-align:right;margin-top:-8px;margin-bottom:18px}
+  .forgot-link:hover{color:var(--g400)}
+  @media(max-width:800px){.auth-left{display:none}.auth-right{width:100%;border-left:none}}
+</style>
+</head>
+<body>
+
+<!-- Left hero -->
+<div class="auth-left">
+  <div class="auth-hero">
+    <div class="brand">
+      <div class="logo-icon">🚗</div>
+      <span class="brand-name">RideFlow</span>
+    </div>
+    <h1>Your city,<br/><span>your ride.</span></h1>
+    <p>Fast, safe, and affordable rides at your fingertips. Join thousands of riders and drivers on RideFlow.</p>
+    <div class="features">
+      <div class="feat"><div class="feat-icon">⚡</div><div class="feat-text"><strong>Instant Matching</strong><span>Get paired with a nearby driver in seconds</span></div></div>
+      <div class="feat"><div class="feat-icon">🛡️</div><div class="feat-text"><strong>Safe & Verified</strong><span>All drivers and vehicles are verified</span></div></div>
+      <div class="feat"><div class="feat-icon">💳</div><div class="feat-text"><strong>Easy Payments</strong><span>Cash, card, or wallet — your choice</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Right auth panel -->
+<div class="auth-right">
+  <div class="auth-box">
+    <!-- Tabs -->
+    <div class="tab-header">
+      <button class="tab-btn active" onclick="switchTab('login')">Sign In</button>
+      <button class="tab-btn" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- Login -->
+    <div class="tab-pane active" id="tab-login">
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-subtitle">Sign in to your RideFlow account</div>
+      <div id="login-alert"></div>
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" id="login-email" class="form-input" placeholder="you@example.com" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="login-pass" class="form-input" placeholder="••••••••" required/>
+        </div>
+        <span class="forgot-link">Forgot password?</span>
+        <button type="submit" id="login-btn" class="btn btn-primary btn-block btn-lg">Sign In</button>
+      </form>
+      <div style="margin-top:20px;text-align:center;font-size:.85rem;color:var(--tmuted)">
+        Don't have an account? <a href="#" onclick="switchTab('register')">Register here</a>
+      </div>
+    </div>
+
+    <!-- Register -->
+    <div class="tab-pane" id="tab-register">
+      <div class="auth-title">Create account</div>
+      <div class="auth-subtitle">Choose your role to get started</div>
+      <div id="reg-alert"></div>
+
+      <!-- Role picker -->
+      <div class="role-select">
+        <div class="role-card selected" id="role-rider" onclick="selectRole('rider')">
+          <div class="role-icon">🧍</div>
+          <div class="role-name">Rider</div>
+        </div>
+        <div class="role-card" id="role-driver" onclick="selectRole('driver')">
+          <div class="role-icon">🚗</div>
+          <div class="role-name">Driver</div>
+        </div>
+      </div>
+      <input type="hidden" id="register-role" value="rider"/>
+
+      <form id="register-form">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="reg-name" class="form-input" placeholder="John Doe" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" id="reg-email" class="form-input" placeholder="you@example.com" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="tel" id="reg-phone" class="form-input" placeholder="+1 555 000 0000"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="reg-pass" class="form-input" placeholder="Min 6 characters" required minlength="6"/>
+        </div>
+        <button type="submit" id="reg-btn" class="btn btn-primary btn-block btn-lg" style="margin-top:8px">Create Account</button>
+      </form>
+      <div style="margin-top:18px;text-align:center;font-size:.85rem;color:var(--tmuted)">
+        Already have an account? <a href="#" onclick="switchTab('login')">Sign in</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script>
+  // Redirect if already logged in
+  (function(){
+    const user = Auth.getUser();
+    if(user) window.location.href = `/${user.role === 'admin' ? 'admin' : user.role}`;
+  })();
+
+  let selectedRole = 'rider';
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    document.querySelectorAll('.tab-btn')[tab === 'login' ? 0 : 1].classList.add('active');
+  }
+
+  function selectRole(role) {
+    selectedRole = role;
+    document.getElementById('role-rider').classList.toggle('selected', role === 'rider');
+    document.getElementById('role-driver').classList.toggle('selected', role === 'driver');
+    document.getElementById('register-role').value = role;
+  }
+
+  function showAlert(id, msg, type) {
+    const el = document.getElementById(id);
+    el.innerHTML = `<div class="alert alert-${type}"><span>${type==='success'?'✓':'✗'}</span> ${msg}</div>`;
+    setTimeout(()=>el.innerHTML='', 5000);
+  }
+
+  // Login
+  document.getElementById('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    setLoading(btn, true);
+    try {
+      const data = await api.post('/auth/login', {
+        email: document.getElementById('login-email').value.trim(),
+        password: document.getElementById('login-pass').value
+      });
+      Auth.setSession(data.token, data.user);
+      toast('Welcome back, ' + data.user.name + '!', 'success');
+      setTimeout(() => {
+        const role = data.user.role;
+        window.location.href = role === 'admin' ? '/admin' : `/${role}`;
+      }, 800);
+    } catch(err) {
+      showAlert('login-alert', err.message, 'error');
+      setLoading(btn, false);
+    }
+  });
+
+  // Register
+  document.getElementById('register-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('reg-btn');
+    setLoading(btn, true);
+    try {
+      const data = await api.post('/auth/register', {
+        name:     document.getElementById('reg-name').value.trim(),
+        email:    document.getElementById('reg-email').value.trim(),
+        password: document.getElementById('reg-pass').value,
+        phone:    document.getElementById('reg-phone').value.trim(),
+        role:     selectedRole
+      });
+      Auth.setSession(data.token, data.user);
+      toast('Account created! Redirecting...', 'success');
+      setTimeout(() => {
+        window.location.href = selectedRole === 'driver' ? '/driver' : '/rider';
+      }, 900);
+    } catch(err) {
+      showAlert('reg-alert', err.message, 'error');
+      setLoading(btn, false);
+    }
+  });
+</script>
+</body>
+</html>

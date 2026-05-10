@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RideFlow | Admin Control Center</title>
+<meta name="description" content="Manage users, drivers, rides, and analytics for the RideFlow platform."/>
+<link rel="stylesheet" href="css/style.css"/>
+<style>
+  .analytics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+  .chart-bar-wrap{display:flex;flex-direction:column;gap:8px}
+  .chart-bar-item{display:flex;align-items:center;gap:10px;font-size:.82rem}
+  .chart-bar-bg{flex:1;height:22px;background:var(--bg700);border-radius:99px;overflow:hidden}
+  .chart-bar-fill{height:100%;background:linear-gradient(90deg,var(--g500),var(--g600));border-radius:99px;transition:width .8s ease}
+  .admin-filter-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .search-input{background:rgba(255,255,255,.04);border:1.5px solid var(--bdr);border-radius:var(--rsm);padding:9px 14px;color:var(--t100);font-family:'Inter',sans-serif;font-size:.87rem;outline:none;width:220px}
+  .search-input:focus{border-color:var(--g500)}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand"><div class="logo-icon">🚗</div>RideFlow <span style="color:var(--g500);font-size:.75rem;margin-left:4px;font-weight:500">ADMIN</span></div>
+  <div class="nav-actions">
+    <div class="nav-user"><span>👑</span><span id="nav-name">Admin</span></div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <button class="sidebar-item active" onclick="showSection('analytics')">📊 Analytics</button>
+    <div class="sidebar-section">Management</div>
+    <button class="sidebar-item" onclick="showSection('users')">👥 Users</button>
+    <button class="sidebar-item" onclick="showSection('drivers')">🚗 Drivers</button>
+    <button class="sidebar-item" onclick="showSection('rides')">🗺️ All Rides</button>
+  </aside>
+
+  <main class="main-content">
+
+    <!-- ── Analytics ─────────────────────────── -->
+    <section id="section-analytics" class="fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Control Center</div><div class="page-subtitle">Platform overview and analytics</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadAnalytics()">↻ Refresh</button>
+      </div>
+
+      <div class="analytics-grid" id="analytics-stats">
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="a-riders">—</div><div class="stat-label">Total Riders</div></div>
+        <div class="stat-card"><div class="stat-icon">🚗</div><div class="stat-value" id="a-drivers">—</div><div class="stat-label">Total Drivers</div></div>
+        <div class="stat-card"><div class="stat-icon">🗺️</div><div class="stat-value" id="a-rides">—</div><div class="stat-label">Total Rides</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="a-revenue">—</div><div class="stat-label">Total Revenue</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="a-completed">—</div><div class="stat-label">Completed Rides</div></div>
+        <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-value" id="a-cancelled">—</div><div class="stat-label">Cancelled Rides</div></div>
+        <div class="stat-card"><div class="stat-icon">🔴</div><div class="stat-value" id="a-flagged">—</div><div class="stat-label">Flagged Drivers</div></div>
+        <div class="stat-card"><div class="stat-icon">✓</div><div class="stat-value" id="a-verified">—</div><div class="stat-label">Verified Drivers</div></div>
+      </div>
+
+      <!-- Revenue Chart -->
+      <div class="card">
+        <div class="font-bold mb-4" style="font-size:1rem">📈 Revenue — Last 7 Days</div>
+        <div id="revenue-chart">
+          <div class="loading-screen" style="min-height:120px"><div class="loader"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Users ─────────────────────────────── -->
+    <section id="section-users" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Users</div><div class="page-subtitle" id="users-count"></div></div>
+      </div>
+      <div class="admin-filter-row">
+        <input type="text" class="search-input" id="user-search" placeholder="🔍 Search by name or email" oninput="filterUsers()"/>
+        <select class="search-input" id="user-role-filter" onchange="loadUsers()" style="width:140px">
+          <option value="">All Roles</option>
+          <option value="rider">Riders</option>
+          <option value="driver">Drivers</option>
+          <option value="admin">Admins</option>
+        </select>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Joined</th></tr></thead>
+          <tbody id="users-tbody"><tr><td colspan="6" class="text-center text-muted" style="padding:24px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Drivers ────────────────────────────── -->
+    <section id="section-drivers" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Drivers</div><div class="page-subtitle">Verify drivers and vehicles, manage flags</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadDrivers()">↻ Refresh</button>
+      </div>
+      <div class="admin-filter-row">
+        <input type="text" class="search-input" id="driver-search" placeholder="🔍 Search drivers" oninput="filterDrivers()"/>
+        <select class="search-input" id="driver-filter" onchange="filterDrivers()" style="width:180px">
+          <option value="">All Drivers</option>
+          <option value="verified">Verified Only</option>
+          <option value="unverified">Unverified</option>
+          <option value="flagged">Flagged</option>
+        </select>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Name</th><th>Vehicle</th><th>Plate</th><th>Status</th><th>Rating</th><th>Earnings</th><th>Actions</th></tr></thead>
+          <tbody id="drivers-tbody"><tr><td colspan="7" class="text-center text-muted" style="padding:24px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── All Rides ──────────────────────────── -->
+    <section id="section-rides" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">All Rides</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadAllRides()">↻ Refresh</button>
+      </div>
+      <div class="admin-filter-row">
+        <select class="search-input" id="ride-status-filter" onchange="loadAllRides()" style="width:180px">
+          <option value="">All Statuses</option>
+          <option value="requested">Requested</option>
+          <option value="accepted">Accepted</option>
+          <option value="en_route">En Route</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>#</th><th>Date</th><th>Rider</th><th>Driver</th><th>Route</th><th>Status</th><th>Fare</th><th>Payment</th></tr></thead>
+          <tbody id="rides-tbody"><tr><td colspan="8" class="text-center text-muted" style="padding:24px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Driver Verify Modal -->
+<div class="modal-overlay" id="verify-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="verify-modal-title">Driver Details</span>
+      <button class="modal-close" onclick="closeModal('verify-modal')">×</button>
+    </div>
+    <div id="verify-modal-body"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script>
+  if(!Auth.requireRole('admin')) void 0;
+  const user = Auth.getUser();
+  if(user) document.getElementById('nav-name').textContent = user.name;
+
+  let allUsers = [], allDrivers = [];
+
+  // Section switching
+  const sidebarMap = ['analytics','users','drivers','rides'];
+  function showSection(name) {
+    document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden'));
+    document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
+    const sec = document.getElementById(`section-${name}`);
+    if(sec){ sec.classList.remove('hidden'); sec.classList.add('fade-in'); }
+    const idx = sidebarMap.indexOf(name);
+    if(idx>=0) document.querySelectorAll('.sidebar-item')[idx]?.classList.add('active');
+    if(name==='analytics') loadAnalytics();
+    if(name==='users')     loadUsers();
+    if(name==='drivers')   loadDrivers();
+    if(name==='rides')     loadAllRides();
+  }
+
+  // Analytics
+  async function loadAnalytics() {
+    try {
+      const data = await api.get('/admin/analytics');
+      const a = data.analytics;
+      document.getElementById('a-riders').textContent    = a.total_riders;
+      document.getElementById('a-drivers').textContent   = a.total_drivers;
+      document.getElementById('a-rides').textContent     = a.total_rides;
+      document.getElementById('a-revenue').textContent   = fmtMoney(a.total_revenue);
+      document.getElementById('a-completed').textContent = a.completed_rides;
+      document.getElementById('a-cancelled').textContent = a.cancelled_rides;
+      document.getElementById('a-flagged').textContent   = a.flagged_drivers;
+      document.getElementById('a-verified').textContent  = a.verified_drivers;
+
+      // Revenue chart
+      const chartEl = document.getElementById('revenue-chart');
+      const days = data.revenue_by_day;
+      if(!days.length) {
+        chartEl.innerHTML = '<div class="empty-state"><div class="ei">📊</div><p>No revenue data yet.</p></div>';
+        return;
+      }
+      const max = Math.max(...days.map(d=>parseFloat(d.revenue)));
+      chartEl.innerHTML = `<div class="chart-bar-wrap">
+        ${days.map(d=>{
+          const pct = max > 0 ? (parseFloat(d.revenue)/max*100).toFixed(1) : 0;
+          const date = new Date(d.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+          return `<div class="chart-bar-item">
+            <div style="width:90px;font-size:.78rem;color:var(--tmuted)">${date}</div>
+            <div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%"></div></div>
+            <div style="width:80px;text-align:right;font-size:.8rem;font-weight:600;color:var(--g400)">${fmtMoney(d.revenue)}</div>
+            <div style="width:50px;text-align:right;font-size:.75rem;color:var(--tmuted)">${d.rides}r</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    } catch(err) { toast(err.message,'error'); }
+  }
+
+  // Users
+  async function loadUsers() {
+    const tbody = document.getElementById('users-tbody');
+    const role  = document.getElementById('user-role-filter').value;
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center"><div class="loader"></div></td></tr>';
+    try {
+      const url = `/admin/users${role?`?role=${role}`:''}`;
+      const data = await api.get(url);
+      allUsers = data.users;
+      document.getElementById('users-count').textContent = `${data.total} total`;
+      renderUsersTable(allUsers);
+    } catch(err) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color:#f87171">${err.message}</td></tr>`;
+    }
+  }
+
+  function renderUsersTable(users) {
+    const tbody = document.getElementById('users-tbody');
+    if(!users.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:24px">No users found.</td></tr>';
+      return;
+    }
+    const roleColors = { rider:'badge-blue', driver:'badge-green', admin:'badge-yellow' };
+    tbody.innerHTML = users.map(u=>`
+      <tr>
+        <td class="text-muted text-xs">#${u.id}</td>
+        <td class="font-semi">${u.name}</td>
+        <td class="text-muted text-sm">${u.email}</td>
+        <td class="text-sm">${u.phone||'—'}</td>
+        <td><span class="badge ${roleColors[u.role]||'badge-gray'}">${u.role}</span></td>
+        <td class="text-xs text-muted">${new Date(u.created_at).toLocaleDateString()}</td>
+      </tr>`).join('');
+  }
+
+  function filterUsers() {
+    const q = document.getElementById('user-search').value.toLowerCase();
+    const filtered = allUsers.filter(u =>
+      u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+    );
+    renderUsersTable(filtered);
+  }
+
+  // Drivers
+  async function loadDrivers() {
+    const tbody = document.getElementById('drivers-tbody');
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center"><div class="loader"></div></td></tr>';
+    try {
+      const data = await api.get('/admin/drivers');
+      allDrivers = data.drivers;
+      renderDriversTable(allDrivers);
+    } catch(err) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="color:#f87171">${err.message}</td></tr>`;
+    }
+  }
+
+  function renderDriversTable(drivers) {
+    const tbody = document.getElementById('drivers-tbody');
+    if(!drivers.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:24px">No drivers found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = drivers.map(d=>`
+      <tr>
+        <td>
+          <div class="font-semi">${d.name}</div>
+          <div class="text-xs text-muted">${d.email}</div>
+        </td>
+        <td class="text-sm">${d.make||'—'} ${d.model||''}</td>
+        <td class="text-sm font-semi">${d.plate_number||'—'}</td>
+        <td>
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            ${d.is_verified ? '<span class="badge badge-green">✓ Driver</span>' : '<span class="badge badge-yellow">Unverified</span>'}
+            ${d.vehicle_verified ? '<span class="badge badge-green">✓ Vehicle</span>' : '<span class="badge badge-gray">Vehicle?</span>'}
+            ${d.flagged ? '<span class="badge badge-red">🚩 Flagged</span>' : ''}
+            <span class="dot ${d.is_online?'dot-green':'dot-gray'}" title="${d.is_online?'Online':'Offline'}"></span>
+          </div>
+        </td>
+        <td><span class="stars" style="font-size:.85rem">${renderStars(d.avg_rating)}</span> <span class="text-xs">${parseFloat(d.avg_rating||5).toFixed(1)}</span></td>
+        <td class="text-green font-bold">${fmtMoney(d.total_earnings)}</td>
+        <td>
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="openVerifyModal(${JSON.stringify(d).replace(/"/g,'&quot;')})">Manage</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  function filterDrivers() {
+    const q      = document.getElementById('driver-search').value.toLowerCase();
+    const filter = document.getElementById('driver-filter').value;
+    let list = allDrivers.filter(d =>
+      d.name.toLowerCase().includes(q) || (d.email||'').toLowerCase().includes(q) || (d.plate_number||'').toLowerCase().includes(q)
+    );
+    if(filter==='verified')   list = list.filter(d=>d.is_verified);
+    if(filter==='unverified') list = list.filter(d=>!d.is_verified);
+    if(filter==='flagged')    list = list.filter(d=>d.flagged);
+    renderDriversTable(list);
+  }
+
+  function openVerifyModal(d) {
+    document.getElementById('verify-modal-title').textContent = `Manage: ${d.name}`;
+    document.getElementById('verify-modal-body').innerHTML = `
+      <div style="font-size:.85rem;margin-bottom:18px">
+        <div class="flex justify-between mb-2"><span class="text-muted">Email</span><strong>${d.email}</strong></div>
+        <div class="flex justify-between mb-2"><span class="text-muted">Phone</span><strong>${d.phone||'—'}</strong></div>
+        <div class="flex justify-between mb-2"><span class="text-muted">License</span><strong>${d.license_number||'—'}</strong></div>
+        <div class="flex justify-between mb-2"><span class="text-muted">Vehicle</span><strong>${d.make||'—'} ${d.model||''} (${d.plate_number||'—'})</strong></div>
+        <div class="flex justify-between mb-2"><span class="text-muted">Avg Rating</span><strong>${parseFloat(d.avg_rating||5).toFixed(2)}</strong></div>
+        <div class="flex justify-between mb-2"><span class="text-muted">Flagged</span><strong>${d.flagged?'Yes':'No'}</strong></div>
+      </div>
+      <div class="divider"></div>
+      <div style="margin-top:16px">
+        <div class="form-group">
+          <label class="form-label">License Number</label>
+          <input type="text" id="modal-license" class="form-input" value="${d.license_number||''}" placeholder="License #"/>
+        </div>
+        <div class="flex gap-3 flex-wrap mt-4">
+          ${!d.is_verified
+            ? `<button class="btn btn-primary btn-sm" onclick="verifyDriver(${d.driver_id},true)">✓ Verify Driver</button>`
+            : `<button class="btn btn-ghost btn-sm" onclick="verifyDriver(${d.driver_id},false)">Unverify Driver</button>`}
+          ${d.vehicle_id && !d.vehicle_verified
+            ? `<button class="btn btn-outline btn-sm" onclick="verifyVehicle(${d.vehicle_id},true)">✓ Verify Vehicle</button>`
+            : d.vehicle_id ? `<button class="btn btn-ghost btn-sm" onclick="verifyVehicle(${d.vehicle_id},false)">Unverify Vehicle</button>` : ''}
+          ${!d.flagged
+            ? `<button class="btn btn-danger btn-sm" onclick="flagDriver(${d.driver_id},true)">🚩 Flag Driver</button>`
+            : `<button class="btn btn-ghost btn-sm" onclick="flagDriver(${d.driver_id},false)">Unflag Driver</button>`}
+        </div>
+      </div>`;
+    openModal('verify-modal');
+  }
+
+  async function verifyDriver(id, status) {
+    const license = document.getElementById('modal-license')?.value.trim();
+    try {
+      await api.patch(`/admin/drivers/${id}/verify`,{ is_verified: status, license_number: license||undefined });
+      toast(`Driver ${status?'verified':'unverified'}.`,'success');
+      closeModal('verify-modal');
+      loadDrivers();
+    } catch(err){ toast(err.message,'error'); }
+  }
+
+  async function verifyVehicle(id, status) {
+    try {
+      await api.patch(`/admin/vehicles/${id}/verify`,{ is_verified: status });
+      toast(`Vehicle ${status?'verified':'unverified'}.`,'success');
+      closeModal('verify-modal');
+      loadDrivers();
+    } catch(err){ toast(err.message,'error'); }
+  }
+
+  async function flagDriver(id, flagged) {
+    try {
+      await api.patch(`/admin/drivers/${id}/flag`,{ flagged });
+      toast(`Driver ${flagged?'flagged':'unflagged'}.`, flagged?'error':'success');
+      closeModal('verify-modal');
+      loadDrivers();
+    } catch(err){ toast(err.message,'error'); }
+  }
+
+  // All Rides
+  async function loadAllRides() {
+    const tbody = document.getElementById('rides-tbody');
+    const status = document.getElementById('ride-status-filter').value;
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center"><div class="loader"></div></td></tr>';
+    try {
+      const url = `/admin/rides${status?`?status=${status}`:''}`;
+      const data = await api.get(url);
+      const rides = data.rides;
+      if(!rides.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding:24px">No rides found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rides.map(r=>`
+        <tr>
+          <td class="text-xs text-muted">#${r.id}</td>
+          <td class="text-xs">${fmtDate(r.created_at)}</td>
+          <td class="text-sm">${r.rider_name}</td>
+          <td class="text-sm">${r.driver_name||'<span class="text-muted">Unassigned</span>'}</td>
+          <td style="font-size:.8rem;max-width:180px"><div>${r.pickup_location}</div><div class="text-muted">→ ${r.dropoff_location}</div></td>
+          <td>${statusPill(r.status)}</td>
+          <td class="font-bold text-green">${fmtMoney(r.fare)}</td>
+          <td>${r.payment_status==='completed'?'<span class="badge badge-green">Paid</span>':r.payment_status==='refunded'?'<span class="badge badge-red">Refunded</span>':'<span class="badge badge-yellow">Pending</span>'}</td>
+        </tr>`).join('');
+    } catch(err) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="color:#f87171">${err.message}</td></tr>`;
+    }
+  }
+
+  function logout(){ Auth.clear(); window.location.href='/'; }
+
+  // Init
+  loadAnalytics();
+</script>
+</body>
+</html>

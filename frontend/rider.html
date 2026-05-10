@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RideFlow | Rider Dashboard</title>
+<meta name="description" content="Book rides, track your journey, view ride history, and manage payments on RideFlow."/>
+<link rel="stylesheet" href="css/style.css"/>
+<style>
+  .ride-form-card{background:var(--bgcard);border:1px solid var(--bdr);border-radius:var(--rlg);padding:26px}
+  .route-input{display:flex;flex-direction:column;gap:12px;position:relative;padding-left:28px}
+  .route-input::before{content:'';position:absolute;left:10px;top:20px;bottom:20px;width:2px;background:linear-gradient(to bottom,var(--g500),var(--bdr));border-radius:2px}
+  .route-dot{position:absolute;left:5px;width:12px;height:12px;border-radius:50%;border:2px solid var(--g500)}
+  .route-dot.top{top:18px;background:var(--g500);box-shadow:0 0 8px var(--glow)}
+  .route-dot.bottom{bottom:18px;background:transparent}
+  .active-ride-card{background:linear-gradient(135deg,rgba(34,197,94,.12),rgba(34,197,94,.04));border:1px solid rgba(34,197,94,.35);border-radius:var(--rlg);padding:22px}
+  .driver-info{display:flex;align-items:center;gap:14px;padding:14px;background:rgba(0,0,0,.25);border-radius:var(--rmd);margin-top:14px}
+  .driver-avatar{width:46px;height:46px;background:linear-gradient(135deg,var(--g600),var(--g700));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700}
+  .status-timeline{display:flex;justify-content:space-between;margin-top:18px;position:relative}
+  .status-timeline::before{content:'';position:absolute;top:14px;left:0;right:0;height:2px;background:var(--bdr)}
+  .timeline-step{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1}
+  .timeline-dot{width:28px;height:28px;border-radius:50%;background:var(--bg700);border:2px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:.65rem;z-index:1;transition:all var(--tr)}
+  .timeline-dot.done{background:var(--g500);border-color:var(--g500);box-shadow:0 0 8px var(--glow)}
+  .timeline-dot.current{background:rgba(34,197,94,.2);border-color:var(--g500);box-shadow:0 0 12px var(--glow);animation:pulseG 2s infinite}
+  .timeline-label{font-size:.65rem;color:var(--tmuted);text-align:center;max-width:60px}
+  .payment-summary{background:rgba(0,0,0,.2);border-radius:var(--rmd);padding:14px;margin-top:14px}
+  .pay-row{display:flex;justify-content:space-between;font-size:.85rem;padding:4px 0}
+  .pay-row.total{font-weight:700;font-size:.95rem;color:var(--g400);border-top:1px solid var(--bdr);margin-top:6px;padding-top:10px}
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="logo-icon">🚗</div>
+    RideFlow
+  </div>
+  <div class="nav-actions">
+    <div class="nav-user">
+      <span>🧍</span>
+      <span id="nav-name">Rider</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <button class="sidebar-item active" onclick="showSection('book')">🗺️ Book a Ride</button>
+    <button class="sidebar-item" onclick="showSection('active')">🚀 Active Ride</button>
+    <button class="sidebar-item" onclick="showSection('history')">📋 Ride History</button>
+    <button class="sidebar-item" onclick="showSection('payments')">💳 Payments</button>
+    <div class="sidebar-section">Account</div>
+    <button class="sidebar-item" onclick="showSection('profile')">👤 My Profile</button>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+
+    <!-- ── Book a Ride ────────────────────── -->
+    <section id="section-book" class="fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Book a Ride</div><div class="page-subtitle">Enter your pickup and drop-off locations</div></div>
+      </div>
+      <div class="grid-2" style="gap:24px">
+        <div>
+          <div class="ride-form-card">
+            <div id="book-alert"></div>
+            <form id="book-form">
+              <div style="margin-bottom:18px">
+                <label class="form-label" style="margin-bottom:10px;display:block">Route</label>
+                <div class="route-input">
+                  <div class="route-dot top"></div>
+                  <input type="text" id="pickup" class="form-input" placeholder="📍 Pickup location" required/>
+                  <div class="route-dot bottom"></div>
+                  <input type="text" id="dropoff" class="form-input" placeholder="🏁 Drop-off location" required/>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Estimated Distance (km)</label>
+                <input type="number" id="distance" class="form-input" placeholder="e.g. 5.2" step="0.1" min="0.1" required/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Payment Method</label>
+                <select id="pay-method" class="form-input">
+                  <option value="cash">💵 Cash</option>
+                  <option value="card">💳 Card</option>
+                  <option value="wallet">📱 Wallet</option>
+                </select>
+              </div>
+              <div id="fare-preview" class="hidden" style="background:rgba(34,197,94,.08);border:1px solid var(--bdr);border-radius:var(--rsm);padding:14px;margin-bottom:16px">
+                <div style="font-size:.8rem;color:var(--tmuted);margin-bottom:4px">ESTIMATED FARE</div>
+                <div id="fare-amount" style="font-size:1.8rem;font-weight:800;color:var(--g500)">$0.00</div>
+                <div style="font-size:.75rem;color:var(--tmuted);margin-top:2px">Base $2.50 + distance + time</div>
+              </div>
+              <button type="submit" id="book-btn" class="btn btn-primary btn-block btn-lg">🚗 Request Ride</button>
+            </form>
+          </div>
+        </div>
+        <div>
+          <div class="map-box" style="height:100%;min-height:280px">
+            <div class="map-icon">🗺️</div>
+            <span>Live map view</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Active Ride ────────────────────── -->
+    <section id="section-active" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Active Ride</div><div class="page-subtitle">Track your current ride</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadActiveRide()">↻ Refresh</button>
+      </div>
+      <div id="active-content">
+        <div class="loading-screen"><div class="loader"></div><span>Loading active ride...</span></div>
+      </div>
+    </section>
+
+    <!-- ── Ride History ───────────────────── -->
+    <section id="section-history" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Ride History</div><div class="page-subtitle">All your past journeys</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="loadHistory()">↻ Refresh</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Route</th><th>Status</th><th>Fare</th><th>Driver</th><th>Rating</th><th>Action</th>
+          </tr></thead>
+          <tbody id="history-tbody"><tr><td colspan="7" class="text-center text-muted" style="padding:28px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Payments ───────────────────────── -->
+    <section id="section-payments" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">Payments</div><div class="page-subtitle">Your payment history</div></div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Date</th><th>Route</th><th>Amount</th><th>Method</th><th>Promo</th><th>Status</th></tr></thead>
+          <tbody id="payments-tbody"><tr><td colspan="6" class="text-center text-muted" style="padding:28px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Profile ────────────────────────── -->
+    <section id="section-profile" class="hidden fade-in">
+      <div class="page-header">
+        <div><div class="page-title">My Profile</div></div>
+      </div>
+      <div style="max-width:460px">
+        <div class="card" id="profile-card">
+          <div class="loading-screen"><div class="loader"></div></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Rating Modal -->
+<div class="modal-overlay" id="rating-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">⭐ Rate Your Ride</span>
+      <button class="modal-close" onclick="closeModal('rating-modal')">×</button>
+    </div>
+    <input type="hidden" id="rate-ride-id"/>
+    <input type="hidden" id="rate-driver-id"/>
+    <div class="form-group" style="margin-bottom:20px">
+      <label class="form-label">Your Rating</label>
+      <div class="star-input" id="star-input">
+        <span class="star" data-val="1">★</span><span class="star" data-val="2">★</span>
+        <span class="star" data-val="3">★</span><span class="star" data-val="4">★</span>
+        <span class="star" data-val="5">★</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Comment (optional)</label>
+      <textarea id="rate-comment" class="form-input" rows="3" placeholder="How was your ride?"></textarea>
+    </div>
+    <button class="btn btn-primary btn-block" id="submit-rating-btn" onclick="submitRating()">Submit Rating</button>
+  </div>
+</div>
+
+<!-- Promo Modal -->
+<div class="modal-overlay" id="promo-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🏷️ Apply Promo Code</span>
+      <button class="modal-close" onclick="closeModal('promo-modal')">×</button>
+    </div>
+    <input type="hidden" id="promo-ride-id"/>
+    <div class="form-group">
+      <label class="form-label">Promo Code</label>
+      <input type="text" id="promo-input" class="form-input" placeholder="Enter code e.g. RIDE10"/>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="applyPromo()">Apply Code</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script>
+  // Auth guard
+  if(!Auth.requireRole('rider')) void 0;
+
+  const user = Auth.getUser();
+  if(user) document.getElementById('nav-name').textContent = user.name;
+
+  // Section switching
+  function showSection(name) {
+    document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+    document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active'));
+    const sec = document.getElementById(`section-${name}`);
+    if(sec) { sec.classList.remove('hidden'); sec.classList.add('fade-in'); }
+    const idx = {book:0,active:1,history:2,payments:3,profile:4}[name];
+    if(idx !== undefined) document.querySelectorAll('.sidebar-item')[idx]?.classList.add('active');
+    if(name==='active')   loadActiveRide();
+    if(name==='history')  loadHistory();
+    if(name==='payments') loadPayments();
+    if(name==='profile')  loadProfile();
+  }
+
+  // Fare preview
+  document.getElementById('distance').addEventListener('input', e => {
+    const d = parseFloat(e.target.value)||0;
+    if(d > 0) {
+      const fare = (2.50 + d*1.20 + Math.ceil(d*3)*0.25).toFixed(2);
+      document.getElementById('fare-amount').textContent = `$${fare}`;
+      document.getElementById('fare-preview').classList.remove('hidden');
+    } else {
+      document.getElementById('fare-preview').classList.add('hidden');
+    }
+  });
+
+  // Book ride
+  document.getElementById('book-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('book-btn');
+    setLoading(btn, true);
+    try {
+      const data = await api.post('/rides/request', {
+        pickup_location:  document.getElementById('pickup').value.trim(),
+        dropoff_location: document.getElementById('dropoff').value.trim(),
+        distance_km:      parseFloat(document.getElementById('distance').value),
+        payment_method:   document.getElementById('pay-method').value
+      });
+      toast('Ride requested! ' + (data.ride.driver_id ? 'Driver assigned.' : 'Searching for driver...'), 'success');
+      document.getElementById('book-form').reset();
+      document.getElementById('fare-preview').classList.add('hidden');
+      setTimeout(() => showSection('active'), 1000);
+    } catch(err) {
+      document.getElementById('book-alert').innerHTML = `<div class="alert alert-error">✗ ${err.message}</div>`;
+      setLoading(btn, false);
+    }
+  });
+
+  // Active ride
+  async function loadActiveRide() {
+    const el = document.getElementById('active-content');
+    el.innerHTML = '<div class="loading-screen"><div class="loader"></div><span>Loading...</span></div>';
+    try {
+      const data = await api.get('/rides/active');
+      if(!data.ride) {
+        el.innerHTML = `<div class="empty-state"><div class="ei">🚗</div><p>No active ride. <a href="#" onclick="showSection('book')">Book one now!</a></p></div>`;
+        return;
+      }
+      const r = data.ride;
+      const steps = ['requested','accepted','en_route','in_progress','completed'];
+      const curIdx = steps.indexOf(r.status);
+      el.innerHTML = `
+        <div class="active-ride-card">
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <div class="font-bold" style="font-size:1.1rem">Ride #${r.id}</div>
+              <div class="text-muted text-sm">${fmtDate(r.created_at)}</div>
+            </div>
+            ${statusPill(r.status)}
+          </div>
+          <div class="route-input" style="margin-bottom:16px">
+            <div style="font-size:.85rem"><strong>From:</strong> ${r.pickup_location}</div>
+            <div style="font-size:.85rem"><strong>To:</strong> ${r.dropoff_location}</div>
+          </div>
+          <div class="status-timeline">
+            ${steps.map((s,i)=>`
+              <div class="timeline-step">
+                <div class="timeline-dot ${i<curIdx?'done':i===curIdx?'current':''}">${i<curIdx?'✓':i+1}</div>
+                <div class="timeline-label">${s.replace('_',' ')}</div>
+              </div>`).join('')}
+          </div>
+          ${r.driver_name ? `
+          <div class="driver-info">
+            <div class="driver-avatar">${r.driver_name[0]}</div>
+            <div>
+              <div class="font-semi">${r.driver_name}</div>
+              <div class="text-xs text-muted">${r.make||''} ${r.model||''} · ${r.plate_number||'—'}</div>
+              <div class="stars text-xs">${renderStars(r.driver_rating)} ${parseFloat(r.driver_rating||5).toFixed(1)}</div>
+            </div>
+          </div>` : '<div class="alert alert-warning mt-2">⏳ Searching for an available driver...</div>'}
+          ${r.fare ? `
+          <div class="payment-summary">
+            <div class="pay-row"><span>Distance</span><span>${r.distance_km} km</span></div>
+            <div class="pay-row"><span>Duration</span><span>~${r.duration_minutes} min</span></div>
+            <div class="pay-row total"><span>Total Fare</span><span style="color:var(--g400)">${fmtMoney(r.fare)}</span></div>
+          </div>` : ''}
+          ${r.status !== 'completed' && r.status !== 'cancelled' ? `
+          <div class="flex gap-3 mt-4">
+            <button class="btn btn-danger btn-sm" onclick="cancelRide(${r.id})">Cancel Ride</button>
+            ${r.status==='requested'||r.status==='accepted' ? `<button class="btn btn-outline btn-sm" onclick="openPromo(${r.id})">🏷️ Apply Promo</button>` : ''}
+          </div>` : ''}
+          ${r.status==='completed' ? `
+          <div class="flex gap-3 mt-4">
+            <button class="btn btn-primary btn-sm" onclick="openRating(${r.id},${r.driver_id})">⭐ Rate Ride</button>
+          </div>` : ''}
+        </div>`;
+    } catch(err) {
+      el.innerHTML = `<div class="alert alert-error">✗ ${err.message}</div>`;
+    }
+  }
+
+  async function cancelRide(id) {
+    if(!confirm('Cancel this ride?')) return;
+    try {
+      await api.post(`/rides/${id}/cancel`,{});
+      toast('Ride cancelled.','info');
+      loadActiveRide();
+    } catch(err) { toast(err.message,'error'); }
+  }
+
+  // History
+  async function loadHistory() {
+    const tbody = document.getElementById('history-tbody');
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center"><div class="loader"></div></td></tr>';
+    try {
+      const data = await api.get('/rides/history');
+      if(!data.rides.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:24px">No rides yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.rides.map(r => `
+        <tr>
+          <td>${fmtDate(r.created_at)}</td>
+          <td><div style="font-size:.82rem">${r.pickup_location}</div><div style="font-size:.78rem;color:var(--tmuted)">→ ${r.dropoff_location}</div></td>
+          <td>${statusPill(r.status)}</td>
+          <td>${fmtMoney(r.fare)}</td>
+          <td>${r.driver_name||'—'}</td>
+          <td>${r.rating ? `<span class="stars">${renderStars(r.rating)}</span>` : '—'}</td>
+          <td>
+            ${r.status==='completed'&&!r.rating ? `<button class="btn btn-primary btn-sm" onclick="openRating(${r.id},${r.driver_id})">Rate</button>` : ''}
+          </td>
+        </tr>`).join('');
+    } catch(err) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="color:#f87171">${err.message}</td></tr>`;
+    }
+  }
+
+  // Payments
+  async function loadPayments() {
+    const tbody = document.getElementById('payments-tbody');
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center"><div class="loader"></div></td></tr>';
+    try {
+      const data = await api.get('/payments/history');
+      if(!data.payments.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:24px">No payments yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.payments.map(p=>`
+        <tr>
+          <td>${fmtDate(p.created_at)}</td>
+          <td style="font-size:.82rem">${p.pickup_location||'—'} → ${p.dropoff_location||'—'}</td>
+          <td class="font-bold text-green">${fmtMoney(p.amount)}</td>
+          <td><span class="badge badge-blue">${p.payment_method}</span></td>
+          <td>${p.promo_code?`<span class="badge badge-yellow">${p.promo_code} -${fmtMoney(p.discount_amount)}</span>`:'—'}</td>
+          <td>${p.status==='completed'?'<span class="badge badge-green">Paid</span>':'<span class="badge badge-yellow">Pending</span>'}</td>
+        </tr>`).join('');
+    } catch(err) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color:#f87171">${err.message}</td></tr>`;
+    }
+  }
+
+  // Profile
+  async function loadProfile() {
+    const el = document.getElementById('profile-card');
+    try {
+      const data = await api.get('/auth/profile');
+      const u = data.user;
+      el.innerHTML = `
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="width:72px;height:72px;background:linear-gradient(135deg,var(--g500),var(--g700));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;margin:0 auto 12px">${u.name[0]}</div>
+          <div style="font-size:1.2rem;font-weight:700">${u.name}</div>
+          <div class="text-muted text-sm">${u.email}</div>
+          <span class="badge badge-green mt-2">Rider</span>
+        </div>
+        <div class="divider"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.85rem">
+          <div><span class="text-muted">Phone</span><br/><strong>${u.phone||'—'}</strong></div>
+          <div><span class="text-muted">Member since</span><br/><strong>${new Date(u.created_at).toLocaleDateString()}</strong></div>
+        </div>`;
+    } catch(err) {
+      el.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  }
+
+  // Rating
+  let selectedRating = 0;
+  function openRating(rideId, driverId) {
+    document.getElementById('rate-ride-id').value = rideId;
+    document.getElementById('rate-driver-id').value = driverId;
+    selectedRating = 0;
+    document.querySelectorAll('#star-input .star').forEach(s => s.classList.remove('sel'));
+    openModal('rating-modal');
+  }
+  document.querySelectorAll('#star-input .star').forEach(star => {
+    star.addEventListener('click', () => {
+      selectedRating = parseInt(star.dataset.val);
+      document.querySelectorAll('#star-input .star').forEach(s => {
+        s.classList.toggle('sel', parseInt(s.dataset.val) <= selectedRating);
+      });
+    });
+  });
+  async function submitRating() {
+    if(!selectedRating) { toast('Please select a star rating.','error'); return; }
+    const btn = document.getElementById('submit-rating-btn');
+    setLoading(btn,true);
+    try {
+      await api.post('/ratings', {
+        ride_id: parseInt(document.getElementById('rate-ride-id').value),
+        rating:  selectedRating,
+        comment: document.getElementById('rate-comment').value.trim()
+      });
+      closeModal('rating-modal');
+      toast('Rating submitted! Thank you.','success');
+      loadHistory();
+    } catch(err) { toast(err.message,'error'); setLoading(btn,false); }
+  }
+
+  // Promo
+  function openPromo(rideId) {
+    document.getElementById('promo-ride-id').value = rideId;
+    document.getElementById('promo-input').value = '';
+    openModal('promo-modal');
+  }
+  async function applyPromo() {
+    const code = document.getElementById('promo-input').value.trim().toUpperCase();
+    if(!code) { toast('Enter a promo code.','error'); return; }
+    try {
+      const data = await api.post('/payments/apply-promo', {
+        ride_id: parseInt(document.getElementById('promo-ride-id').value),
+        promo_code: code
+      });
+      closeModal('promo-modal');
+      toast(data.message,'success');
+      loadActiveRide();
+    } catch(err) { toast(err.message,'error'); }
+  }
+
+  function logout() { Auth.clear(); window.location.href = '/'; }
+</script>
+</body>
+</html>
