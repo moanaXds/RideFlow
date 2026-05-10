@@ -1,62 +1,109 @@
 # RideFlow — Full-Stack Ride-Hailing System
 
-## Project Structure
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0+-blue.svg)](https://www.mysql.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## 📋 Overview
+
+RideFlow is a comprehensive full-stack ride-hailing platform developed as part of a Database Laboratory course project. This iteration (Iteration 3) implements a complete ride-sharing system with role-based access control, real-time ride management, payment processing, and administrative oversight.
+
+The system supports three primary user roles:
+- **Riders**: Request and track rides
+- **Drivers**: Accept rides and manage availability
+- **Administrators**: Monitor platform analytics and manage users
+
+## ✨ Features
+
+- 🔐 **Secure Authentication**: JWT-based authentication with role-based access control
+- 🚗 **Real-time Ride Management**: Automated driver assignment and ride status tracking
+- 💳 **Payment Integration**: Fare calculation with promo code support
+- ⭐ **Rating System**: Driver and rider feedback mechanism
+- 📊 **Admin Dashboard**: Comprehensive analytics and user management
+- 🗄️ **MySQL Database**: Robust relational database design with proper normalization
+- 🌐 **Responsive Frontend**: Clean, intuitive user interfaces for all roles
+
+## 🛠️ Technology Stack
+
+### Backend
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database**: MySQL 8.0+
+- **Authentication**: JSON Web Tokens (JWT)
+- **Security**: bcrypt for password hashing
+
+### Frontend
+- **HTML5**: Semantic markup
+- **CSS3**: Responsive design
+- **Vanilla JavaScript**: Client-side logic and API integration
+
+### Database
+- **Schema**: Relational design with foreign keys and constraints
+- **Connection**: MySQL connection pooling for performance
+
+## 📁 Project Structure
 
 ```
 ITERATION 3/
 ├── database/
-│   └── schema.sql              ← MySQL schema (source of truth)
+│   └── schema.sql              # MySQL database schema
 ├── backend/
-│   ├── config/db.js            ← MySQL connection pool
+│   ├── config/
+│   │   └── db.js               # Database connection configuration
 │   ├── controllers/
-│   │   ├── authController.js
-│   │   ├── rideController.js
-│   │   ├── driverController.js
-│   │   ├── paymentController.js
-│   │   ├── ratingController.js
-│   │   └── adminController.js
+│   │   ├── authController.js   # Authentication logic
+│   │   ├── rideController.js   # Ride management
+│   │   ├── driverController.js # Driver operations
+│   │   ├── paymentController.js# Payment processing
+│   │   ├── ratingController.js # Rating system
+│   │   └── adminController.js  # Administrative functions
 │   ├── middleware/
-│   │   ├── auth.js             ← JWT verify
-│   │   └── roleCheck.js        ← RBAC (rider/driver/admin)
+│   │   ├── auth.js             # JWT authentication middleware
+│   │   └── roleCheck.js        # Role-based access control
 │   ├── routes/
-│   │   ├── auth.js
-│   │   ├── rides.js
-│   │   ├── driver.js
-│   │   ├── payments.js
-│   │   ├── ratings.js
-│   │   └── admin.js
-│   ├── server.js
-│   ├── package.json
-│   └── .env
+│   │   ├── auth.js             # Authentication endpoints
+│   │   ├── rides.js            # Ride-related API routes
+│   │   ├── driver.js           # Driver management routes
+│   │   ├── payments.js         # Payment API routes
+│   │   ├── ratings.js          # Rating system routes
+│   │   └── admin.js            # Admin control routes
+│   ├── server.js               # Main application server
+│   ├── package.json            # Node.js dependencies
+│   └── dump.js                 # Database seeding script
 └── frontend/
-    ├── index.html              ← Sign In / Register
-    ├── rider.html              ← Rider Dashboard
-    ├── driver.html             ← Driver Dashboard
-    ├── admin.html              ← Admin Control Center
-    ├── css/style.css
-    └── js/api.js
+    ├── index.html              # Landing page (Sign In/Register)
+    ├── rider.html              # Rider dashboard
+    ├── driver.html             # Driver dashboard
+    ├── admin.html              # Admin control panel
+    ├── css/
+    │   └── style.css           # Application stylesheets
+    └── js/
+        └── api.js              # Frontend API client
 ```
 
----
+## 🚀 Installation & Setup
 
-## Setup Instructions
+### Prerequisites
 
-### 1. MySQL Setup
+- **Node.js** (v18 or higher)
+- **MySQL Server** (v8.0 or higher)
+- **Git** (for cloning the repository)
 
-Open MySQL and run the schema:
+### 1. Database Setup
+
+1. Start your MySQL server
+2. Create a new database named `rideflow`
+3. Execute the schema file:
+
 ```bash
-mysql -u root -p < database/schema.sql
+mysql -u root -p rideflow < database/schema.sql
 ```
 
-Or manually in MySQL Workbench / terminal:
-```sql
-SOURCE /path/to/database/schema.sql;
-```
+### 2. Environment Configuration
 
-### 2. Configure Environment
+Create a `.env` file in the `backend/` directory:
 
-Edit `backend/.env`:
-```
+```env
 PORT=5000
 DB_HOST=localhost
 DB_USER=root
@@ -66,120 +113,143 @@ JWT_SECRET=rideflow_jwt_super_secret_2024
 JWT_EXPIRES_IN=7d
 ```
 
-### 3. Install & Run Backend
+### 3. Backend Installation
+
 ```bash
 cd backend
 npm install
-npm run dev       # development (nodemon)
+npm run dev       # Development mode with auto-reload
 # OR
-npm start         # production
+npm start         # Production mode
 ```
 
-### 4. Access the App
+### 4. Access the Application
 
-| Page | URL |
-|------|-----|
-| Sign In / Register | http://localhost:5000 |
-| Rider Dashboard | http://localhost:5000/rider |
-| Driver Dashboard | http://localhost:5000/driver |
-| Admin Panel | http://localhost:5000/admin |
+The application will be available at `http://localhost:5000` with the following pages:
 
----
+| User Role | URL | Description |
+|-----------|-----|-------------|
+| Public | `http://localhost:5000` | Sign In / Registration |
+| Rider | `http://localhost:5000/rider` | Rider Dashboard |
+| Driver | `http://localhost:5000/driver` | Driver Dashboard |
+| Admin | `http://localhost:5000/admin` | Admin Control Panel |
 
-## Default Admin Credentials
+## 🔑 Default Credentials
 
-| Field | Value |
-|-------|-------|
-| Email | `admin@rideflow.com` |
-| Password | `password` |
+### Admin Account
+- **Email**: `admin@rideflow.com`
+- **Password**: `password`
 
----
+## 📚 API Reference
 
-## API Reference
+### Authentication Endpoints (`/api/auth`)
 
-### Auth (`/api/auth`)
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/register` | — | Register rider or driver |
-| POST | `/login` | — | Login, receive JWT |
-| GET | `/profile` | ✓ | Get current user profile |
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| POST | `/register` | ❌ | Register new rider or driver account |
+| POST | `/login` | ❌ | Authenticate user and receive JWT token |
+| GET | `/profile` | ✅ | Retrieve current user profile information |
 
-### Rides (`/api/rides`)
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/request` | rider | Create ride request + auto-assign driver |
-| GET | `/history` | ✓ | Role-aware ride history |
-| GET | `/active` | ✓ | Get current active ride |
-| PATCH | `/:id/status` | ✓ | Update ride status |
-| POST | `/:id/cancel` | rider | Cancel a ride |
+### Ride Management (`/api/rides`)
 
-### Driver (`/api/driver`)
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/pending-rides` | driver | Available ride requests |
-| POST | `/rides/:id/accept` | driver | Accept a ride |
-| POST | `/rides/:id/reject` | driver | Pass on a ride |
-| PATCH | `/availability` | driver | Toggle online/offline |
-| GET | `/earnings` | driver | Earnings breakdown |
-| POST | `/vehicle` | driver | Register vehicle |
-| PATCH | `/rides/:id/status` | driver | Update ride status |
+| Method | Endpoint | Auth Required | Role | Description |
+|--------|----------|---------------|------|-------------|
+| POST | `/request` | ✅ | Rider | Create new ride request with automatic driver assignment |
+| GET | `/history` | ✅ | Any | Retrieve ride history (filtered by user role) |
+| GET | `/active` | ✅ | Any | Get details of current active ride |
+| PATCH | `/:id/status` | ✅ | Any | Update ride status |
+| POST | `/:id/cancel` | ✅ | Rider | Cancel an existing ride |
 
-### Payments (`/api/payments`)
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/history` | rider | Payment history |
-| GET | `/ride/:ride_id` | ✓ | Payment for specific ride |
-| POST | `/apply-promo` | ✓ | Apply promo code |
-| POST | `/:id/complete` | ✓ | Mark payment complete |
+### Driver Operations (`/api/driver`)
 
-### Ratings (`/api/ratings`)
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/` | rider | Submit ride rating |
-| GET | `/driver/:driver_id` | ✓ | Driver's rating history |
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| GET | `/pending-rides` | ✅ | Get list of available ride requests |
+| POST | `/rides/:id/accept` | ✅ | Accept a ride request |
+| POST | `/rides/:id/reject` | ✅ | Reject a ride request |
+| PATCH | `/availability` | ✅ | Toggle online/offline status |
+| GET | `/earnings` | ✅ | View earnings breakdown |
+| POST | `/vehicle` | ✅ | Register or update vehicle information |
+| PATCH | `/rides/:id/status` | ✅ | Update status of assigned ride |
 
-### Admin (`/api/admin`)
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/analytics` | admin | Platform statistics |
-| GET | `/users` | admin | List users (filterable) |
-| GET | `/drivers` | admin | List all drivers |
-| PATCH | `/drivers/:id/verify` | admin | Verify/unverify driver |
-| PATCH | `/vehicles/:id/verify` | admin | Verify/unverify vehicle |
-| PATCH | `/drivers/:id/flag` | admin | Flag/unflag driver |
-| GET | `/rides` | admin | All rides (filterable) |
+### Payment System (`/api/payments`)
 
----
+| Method | Endpoint | Auth Required | Role | Description |
+|--------|----------|---------------|------|-------------|
+| GET | `/history` | ✅ | Rider | View payment history |
+| GET | `/ride/:ride_id` | ✅ | Any | Get payment details for specific ride |
+| POST | `/apply-promo` | ✅ | Any | Apply promotional code to reduce fare |
+| POST | `/:id/complete` | ✅ | Any | Mark payment as completed |
 
-## Ride Lifecycle
+### Rating System (`/api/ratings`)
+
+| Method | Endpoint | Auth Required | Role | Description |
+|--------|----------|---------------|------|-------------|
+| POST | `/` | ✅ | Rider | Submit rating for completed ride |
+| GET | `/driver/:driver_id` | ✅ | Any | View driver's rating history |
+
+### Administrative Functions (`/api/admin`)
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| GET | `/analytics` | ✅ | Platform-wide statistics and metrics |
+| GET | `/users` | ✅ | List all users with filtering options |
+| GET | `/drivers` | ✅ | Comprehensive driver listing |
+| PATCH | `/drivers/:id/verify` | ✅ | Verify or unverify driver account |
+| PATCH | `/vehicles/:id/verify` | ✅ | Verify or unverify vehicle registration |
+| PATCH | `/drivers/:id/flag` | ✅ | Flag or unflag driver for violations |
+| GET | `/rides` | ✅ | View all rides with filtering capabilities |
+
+## 🔄 Ride Lifecycle
+
+The ride management system follows a structured state machine:
 
 ```
 requested → accepted → en_route → in_progress → completed
-                                              ↘ cancelled (any stage)
+                                              ↘ cancelled (at any stage)
 ```
 
-- **requested**: Ride created, searching for driver
-- **accepted**: Driver assigned and confirmed
-- **en_route**: Driver heading to pickup
-- **in_progress**: Rider onboard
-- **completed**: Ride done → payment finalized + rating unlocked
+### State Descriptions
+- **requested**: Ride has been created, system is searching for available driver
+- **accepted**: Driver has been assigned and confirmed the ride
+- **en_route**: Driver is traveling to pickup location
+- **in_progress**: Rider is onboard, trip is active
+- **completed**: Ride finished, payment processed, rating available
 
-## Fare Formula
+## 💰 Fare Calculation
+
+The fare is calculated using the following formula:
 
 ```
 fare = (BASE_FARE + distance_km × 1.20 + duration_min × 0.25) × surge_multiplier
 ```
 
-- Base: $2.50
-- Per km: $1.20
-- Per minute: $0.25
-- Surge: 1.0x default (configurable)
+### Pricing Components
+- **Base Fare**: $2.50 (fixed)
+- **Per Kilometer**: $1.20
+- **Per Minute**: $0.25
+- **Surge Multiplier**: 1.0x (default, configurable based on demand)
 
-## Business Rules
+## 📋 Business Rules
 
-- Only **online + verified** drivers with **verified vehicles** are auto-assigned
-- Drivers below **3.5 avg rating** are automatically **flagged**
-- Every completed ride creates a **payment record**
-- Every completed ride allows exactly **one rating**
-- Promo codes reduce fare; usage is tracked and capped
-# RideFlow
+- **Driver Assignment**: Only online, verified drivers with verified vehicles are eligible for automatic assignment
+- **Quality Control**: Drivers with average rating below 3.5 are automatically flagged for review
+- **Payment Processing**: Every completed ride generates a corresponding payment record
+- **Feedback System**: Each completed ride allows exactly one rating submission
+- **Promotional Codes**: Usage is tracked with configurable caps and expiration
+
+## 🤝 Contributing
+
+This project was developed as part of an academic database laboratory course. For educational purposes only.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👨‍💻 Author
+
+Developed as part of Database Laboratory coursework.
+
+---
+
+*RideFlow - Connecting Riders and Drivers Efficiently*
