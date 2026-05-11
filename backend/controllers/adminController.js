@@ -149,4 +149,137 @@ const getAllRides = async (req, res) => {
   }
 };
 
-module.exports = { getAnalytics, getAllUsers, getAllDrivers, verifyDriver, verifyVehicle, flagDriver, getAllRides };
+// ── PATCH /api/admin/users/:id/status ──────────────────────
+// Set account_status: active | suspended | banned | pending_verification
+const setAccountStatus = async (req, res) => {
+  const { id } = req.params;
+  const { account_status } = req.body;
+  const allowed = ['active', 'suspended', 'banned', 'pending_verification'];
+  if (!allowed.includes(account_status)) {
+    return res.status(400).json({
+      success: false,
+      message: `account_status must be one of: ${allowed.join(', ')}`
+    });
+  }
+  try {
+    const [result] = await db.query(
+      `UPDATE users SET account_status = ? WHERE id = ?`,
+      [account_status, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+    return res.json({
+      success: true,
+      message: `User account status set to '${account_status}'.`
+    });
+  } catch (err) {
+    console.error('[setAccountStatus]', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// ── GET /api/admin/permissions ───────────────────────────────
+const getPermissions = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, role, permission, granted, created_at FROM role_permissions ORDER BY role, permission`
+    );
+    return res.json({ success: true, permissions: rows });
+  } catch (err) {
+    console.error('[getPermissions]', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// ── PATCH /api/admin/permissions ─────────────────────────────
+// Grant or revoke a specific role permission
+const setPermission = async (req, res) => {
+  const { role, permission, granted } = req.body;
+  if (!role || !permission || typeof granted !== 'boolean') {
+    return res.status(400).json({ success: false, message: 'role, permission, and granted (boolean) are required.' });
+  }
+  try {
+    await db.query(
+      `INSERT INTO role_permissions (role, permission, granted)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE granted = VALUES(granted)`,
+      [role, permission, granted ? 1 : 0]
+    );
+    return res.json({
+      success: true,
+      message: `Permission '${permission}' for role '${role}' ${granted ? 'granted' : 'revoked'}.`
+    });
+  } catch (err) {
+    console.error('[setPermission]', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// ── GET /api/admin/commissions ───────────────────────────────
+// Commission + payout overview for all completed payments
+const getCommissionReport = async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  try {
+    const [[summary]] = await db.query(`
+      SELECT
+        COUNT(*)                            AS total_payments,
+        COALESCE(SUM(amount), 0)           AS gross_revenue,
+        COALESCE(SUM(commission_amount),0) AS total_commission,
+        COALESCE(SUM(driver_payout),0)     AS total_driver_payouts
+      FROM payments WHERE status = 'completed'
+    `);
+
+    const [rows] = await db.query(`
+      SELECT p.id, p.ride_id, p.amount, p.commission_rate, p.commission_amount,
+             p.driver_payout, p.payout_status, p.paid_at, p.created_at,
+             u.name AS rider_name, du.name AS driver_name
+      FROM payments p
+      JOIN rides r ON r.id = p.ride_id
+      JOIN users u ON u.id = r.rider_id
+      LEFT JOIN drivers d ON d.id = r.driver_id
+      LEFT JOIN users du ON du.id = d.user_id
+      WHERE p.status = 'completed'
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?`,
+      [parseInt(limit), offset]
+    );
+
+    return res.json({ success: true, summary, payments: rows });
+  } catch (err) {
+    console.error('[getCommissionReport]', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// ── POST /api/admin/payouts/:payment_id ──────────────────────
+// Mark a driver payout as paid
+const markPayoutPaid = async (req, res) => {
+  const { payment_id } = req.params;
+  try {
+    const [rows] = await db.query(
+      `SELECT * FROM payments WHERE id = ? AND status = 'completed' AND payout_status = 'pending'`,
+      [payment_id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Payment not found or payout already processed.' });
+    }
+    await db.query(
+      `UPDATE payments SET payout_status = 'paid', paid_at = NOW() WHERE id = ?`,
+      [payment_id]
+    );
+    return res.json({ success: true, message: 'Payout marked as paid.' });
+  } catch (err) {
+    console.error('[markPayoutPaid]', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+module.exports = {
+  getAnalytics, getAllUsers, getAllDrivers,
+  verifyDriver, verifyVehicle, flagDriver, getAllRides,
+  // v2 additions
+  setAccountStatus, getPermissions, setPermission,
+  getCommissionReport, markPayoutPaid
+};

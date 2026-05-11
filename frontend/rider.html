@@ -62,13 +62,20 @@
     <!-- ── Book a Ride ────────────────────── -->
     <section id="section-book" class="fade-in">
       <div class="page-header">
-        <div><div class="page-title">Book a Ride</div><div class="page-subtitle">Enter your pickup and drop-off locations</div></div>
+        <div><div class="page-title">Book a Ride</div><div class="page-subtitle">Select your city first, then choose pickup and drop-off locations</div></div>
       </div>
       <div class="grid-2" style="gap:24px">
         <div>
           <div class="ride-form-card">
             <div id="book-alert"></div>
             <form id="book-form">
+              <div style="margin-bottom:18px">
+                <label class="form-label" style="margin-bottom:10px;display:block">City (Pakistan)</label>
+                <select id="city_id" class="form-input" required>
+                  <option value="">Select a city</option>
+                  <option value="loading" disabled>Loading cities...</option>
+                </select>
+              </div>
               <div style="margin-bottom:18px">
                 <label class="form-label" style="margin-bottom:10px;display:block">Route</label>
                 <div class="route-input">
@@ -78,10 +85,7 @@
                   <input type="text" id="dropoff" class="form-input" placeholder="🏁 Drop-off location" required/>
                 </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Estimated Distance (km)</label>
-                <input type="number" id="distance" class="form-input" placeholder="e.g. 5.2" step="0.1" min="0.1" required/>
-              </div>
+              <input type="hidden" id="distance" value="1.0" />
               <div class="form-group">
                 <label class="form-label">Payment Method</label>
                 <select id="pay-method" class="form-input">
@@ -89,11 +93,6 @@
                   <option value="card">💳 Card</option>
                   <option value="wallet">📱 Wallet</option>
                 </select>
-              </div>
-              <div id="fare-preview" class="hidden" style="background:rgba(34,197,94,.08);border:1px solid var(--bdr);border-radius:var(--rsm);padding:14px;margin-bottom:16px">
-                <div style="font-size:.8rem;color:var(--tmuted);margin-bottom:4px">ESTIMATED FARE</div>
-                <div id="fare-amount" style="font-size:1.8rem;font-weight:800;color:var(--g500)">$0.00</div>
-                <div style="font-size:.75rem;color:var(--tmuted);margin-top:2px">Base $2.50 + distance + time</div>
               </div>
               <button type="submit" id="book-btn" class="btn btn-primary btn-block btn-lg">🚗 Request Ride</button>
             </form>
@@ -227,17 +226,36 @@
     if(name==='profile')  loadProfile();
   }
 
-  // Fare preview
-  document.getElementById('distance').addEventListener('input', e => {
-    const d = parseFloat(e.target.value)||0;
-    if(d > 0) {
-      const fare = (2.50 + d*1.20 + Math.ceil(d*3)*0.25).toFixed(2);
-      document.getElementById('fare-amount').textContent = `$${fare}`;
-      document.getElementById('fare-preview').classList.remove('hidden');
-    } else {
-      document.getElementById('fare-preview').classList.add('hidden');
+  const citySelect = document.getElementById('city_id');
+  const pickupInput = document.getElementById('pickup');
+  const dropoffInput = document.getElementById('dropoff');
+
+  async function loadCities() {
+    try {
+      const data = await api.get('/cities');
+      if (data.cities) {
+        citySelect.innerHTML = '<option value="">Select a city</option>' + 
+          data.cities.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      }
+    } catch (err) {
+      console.error('Failed to load cities:', err);
+      citySelect.innerHTML = '<option value="">Error loading cities</option>';
     }
-  });
+  }
+  loadCities();
+
+  function updateRouteInputs() {
+    const enabled = !!citySelect.value && citySelect.value !== 'loading';
+    pickupInput.disabled = !enabled;
+    dropoffInput.disabled = !enabled;
+    if (!enabled) {
+      pickupInput.value = '';
+      dropoffInput.value = '';
+    }
+  }
+
+  citySelect.addEventListener('change', updateRouteInputs);
+  updateRouteInputs();
 
   // Book ride
   document.getElementById('book-form').addEventListener('submit', async e => {
@@ -246,6 +264,7 @@
     setLoading(btn, true);
     try {
       const data = await api.post('/rides/request', {
+        city_id:          parseInt(document.getElementById('city_id').value),
         pickup_location:  document.getElementById('pickup').value.trim(),
         dropoff_location: document.getElementById('dropoff').value.trim(),
         distance_km:      parseFloat(document.getElementById('distance').value),
@@ -253,7 +272,7 @@
       });
       toast('Ride requested! ' + (data.ride.driver_id ? 'Driver assigned.' : 'Searching for driver...'), 'success');
       document.getElementById('book-form').reset();
-      document.getElementById('fare-preview').classList.add('hidden');
+      updateRouteInputs();
       setTimeout(() => showSection('active'), 1000);
     } catch(err) {
       document.getElementById('book-alert').innerHTML = `<div class="alert alert-error">✗ ${err.message}</div>`;
@@ -309,7 +328,7 @@
             <div class="pay-row"><span>Duration</span><span>~${r.duration_minutes} min</span></div>
             <div class="pay-row total"><span>Total Fare</span><span style="color:var(--g400)">${fmtMoney(r.fare)}</span></div>
           </div>` : ''}
-          ${r.status !== 'completed' && r.status !== 'cancelled' ? `
+          ${['requested','accepted','en_route'].includes(r.status) ? `
           <div class="flex gap-3 mt-4">
             <button class="btn btn-danger btn-sm" onclick="cancelRide(${r.id})">Cancel Ride</button>
             ${r.status==='requested'||r.status==='accepted' ? `<button class="btn btn-outline btn-sm" onclick="openPromo(${r.id})">🏷️ Apply Promo</button>` : ''}

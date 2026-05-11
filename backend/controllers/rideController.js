@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 // ── POST /api/rides/request ──────────────────────────────────
 const requestRide = async (req, res) => {
-  const { pickup_location, dropoff_location, distance_km, payment_method } = req.body;
+  const { pickup_location, dropoff_location, distance_km, payment_method, city_id } = req.body;
   const rider_id = req.user.id;
 
   if (!pickup_location || !dropoff_location || !distance_km) {
@@ -19,12 +19,14 @@ const requestRide = async (req, res) => {
       return res.status(409).json({ success: false, message: 'You already have an active ride.' });
     }
 
-    // Auto-assign: find nearest available verified driver
+    // Auto-assign: find nearest available verified driver (optionally filtered by city)
     const [drivers] = await db.query(
       `SELECT d.id FROM drivers d
        INNER JOIN vehicles v ON v.driver_id = d.id
        WHERE d.is_online = 1 AND d.is_verified = 1 AND v.is_verified = 1 AND d.flagged = 0
-       ORDER BY RAND() LIMIT 1`
+       ${city_id ? 'AND d.city_id = ?' : ''}
+       ORDER BY RAND() LIMIT 1`,
+      city_id ? [city_id] : []
     );
 
     const driver_id    = drivers.length > 0 ? drivers[0].id : null;
@@ -34,16 +36,23 @@ const requestRide = async (req, res) => {
     const BASE_FARE    = parseFloat(process.env.BASE_FARE    || 2.50);
     const PER_KM_RATE  = parseFloat(process.env.PER_KM_RATE  || 1.20);
     const PER_MIN_RATE = parseFloat(process.env.PER_MIN_RATE || 0.25);
-    const surge        = 1.0;
+    let surge = 1.0;
+
+    // Optional: Get surge for the city
+    if (city_id) {
+      const [surgeRows] = await db.query(`SELECT surge_multiplier FROM vw_active_surge WHERE city_id = ?`, [city_id]);
+      if (surgeRows.length > 0) surge = parseFloat(surgeRows[0].surge_multiplier);
+    }
+
     const dist         = parseFloat(distance_km);
     const est_minutes  = Math.ceil(dist * 3); // rough estimate: 3 min/km
     const fare         = ((BASE_FARE + (dist * PER_KM_RATE) + (est_minutes * PER_MIN_RATE)) * surge).toFixed(2);
 
     const [result] = await db.query(
       `INSERT INTO rides
-         (rider_id, driver_id, pickup_location, dropoff_location, status, distance_km, duration_minutes, fare, surge_multiplier)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [rider_id, driver_id, pickup_location, dropoff_location, initial_status, dist, est_minutes, fare, surge]
+         (rider_id, driver_id, city_id, pickup_location, dropoff_location, status, distance_km, duration_minutes, fare, surge_multiplier)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [rider_id, driver_id, city_id || null, pickup_location, dropoff_location, initial_status, dist, est_minutes, fare, surge]
     );
     const ride_id = result.insertId;
 
@@ -222,7 +231,7 @@ const cancelRide = async (req, res) => {
   const { id } = req.params;
   try {
     const [rows] = await db.query(
-      `SELECT * FROM rides WHERE id = ? AND rider_id = ? AND status IN ('requested','accepted')`,
+      `SELECT * FROM rides WHERE id = ? AND rider_id = ? AND status IN ('requested','accepted','en_route')`,
       [id, req.user.id]
     );
     if (rows.length === 0) {
