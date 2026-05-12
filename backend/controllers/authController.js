@@ -20,8 +20,9 @@ const register = async (req, res) => {
     if (existing.length > 0) {
       return res.status(409).json({ success: false, message: 'Email already registered.' });
     }
-
+    
     const hashed = await bcrypt.hash(password, 10);
+    
     const [result] = await db.query(
       'INSERT INTO users (name, email, password, phone, role) VALUES (?, ?, ?, ?, ?)',
       [name, email, hashed, phone || null, role]
@@ -58,7 +59,7 @@ const login = async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ success: false, message: 'Email and password are required.' });
   }
-
+  
   try {
     const [rows] = await db.query(
       'SELECT id, name, email, password, phone, role FROM users WHERE email = ?',
